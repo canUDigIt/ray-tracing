@@ -3,5 +3,5 @@ project(ray_tracing)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(SOURCE_FILES main.cpp vec3.cpp vec3.h)
+set(SOURCE_FILES main.cpp vec3.cpp vec3.h ray.h)
 add_executable(ray_tracing ${SOURCE_FILES})
