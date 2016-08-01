@@ -1,25 +1,23 @@
 #include <iostream>
 #include <fstream>
+#include <limits>
+#include <vector>
+#include <memory>
 
-#include "ray.h"
+#include "hitable_list.h"
+#include "sphere.h"
 
-bool hit_sphere(vec3 center, double radius, const ray& r) {
-    vec3 oc = r.origin - center;
-    float a = dot(r.direction, r.direction);
-    float b = 2.f * dot(oc, r.direction);
-    float c = dot(oc, oc) - radius*radius;
-    float discriminant = b*b - 4*a*c;
-    return (discriminant > 0);
-}
-
-vec3 color(const ray& r) {
-    if (hit_sphere(vec3(0.f, 0.f, 1.f), 0.5, r)) {
-        return vec3(1.f, 0.f, 0.f);
+vec3 color(const ray& r, const std::unique_ptr<hitable>& world) {
+    hit_record rec;
+    const vec3& center = vec3(0.f, 0.f, -1.f);
+    if (world->hit(r, 0.f, std::numeric_limits<float>::max(), rec)) {
+        return 0.5f*vec3(rec.normal.x+1, rec.normal.y+1, rec.normal.z+1);
     }
-
-    vec3 unit_direction = unit_vector(r.direction);
-    float t = 0.5f*(unit_direction.y + 1.f);
-    return (1.0 - t) * vec3(1.f, 1.f, 1.f) + t*vec3(0.5f, 0.7f, 1.0);
+    else {
+        vec3 unit_direction = unit_vector(r.direction);
+        float t = 0.5f*(unit_direction.y + 1.f);
+        return (1.0 - t) * vec3(1.f, 1.f, 1.f) + t*vec3(0.5f, 0.7f, 1.0);
+    }
 }
 
 int main() {
@@ -34,12 +32,17 @@ int main() {
     vec3 vertical(0.f, 2.f, 0.f);
     vec3 origin(0.f, 0.f, 0.f);
 
+    std::vector< std::unique_ptr<hitable> > list(2);
+    list[0].reset( new sphere(vec3(0.f, 0.f, -1.f), 0.5f) );
+    list[1].reset( new sphere(vec3(0.f, -100.5f, -1.f), 100) );
+    std::unique_ptr<hitable> world( new hitable_list(list.data(), list.size()) );
+
     for (int j = ny-1; j >= 0; --j) {
         for (int i = 0; i < nx; ++i) {
             float u = static_cast<float>(i) / static_cast<float>(nx);
             float v = static_cast<float>(j) / static_cast<float>(ny);
             ray r(origin, lower_left_corner + u*horizontal + v*vertical);
-            vec3 col( color(r) );
+            vec3 col = color(r, world);
             int ir = static_cast<int>(255.99 * col.r);
             int ig = static_cast<int>(255.99 * col.g);
             int ib = static_cast<int>(255.99 * col.b);
