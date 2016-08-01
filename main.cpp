@@ -3,7 +3,20 @@
 
 #include "ray.h"
 
+bool hit_sphere(vec3 center, double radius, const ray& r) {
+    vec3 oc = r.origin - center;
+    float a = dot(r.direction, r.direction);
+    float b = 2.f * dot(oc, r.direction);
+    float c = dot(oc, oc) - radius*radius;
+    float discriminant = b*b - 4*a*c;
+    return (discriminant > 0);
+}
+
 vec3 color(const ray& r) {
+    if (hit_sphere(vec3(0.f, 0.f, 1.f), 0.5, r)) {
+        return vec3(1.f, 0.f, 0.f);
+    }
+
     vec3 unit_direction = unit_vector(r.direction);
     float t = 0.5f*(unit_direction.y + 1.f);
     return (1.0 - t) * vec3(1.f, 1.f, 1.f) + t*vec3(0.5f, 0.7f, 1.0);
