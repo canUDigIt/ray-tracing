@@ -16,12 +16,12 @@ public:
     inline const vec3& operator+() const { return *this; }
     inline vec3 operator-() const { return vec3(-x, -y, -z); }
 
-    inline vec3& operator+=(const vec3& v2);
-    inline vec3& operator-=(const vec3& v2);
-    inline vec3& operator*=(const vec3& v2);
-    inline vec3& operator/=(const vec3& v2);
-    inline vec3& operator*=(const float t);
-    inline vec3& operator/=(const float t);
+    vec3& operator+=(const vec3& v2);
+    vec3& operator-=(const vec3& v2);
+    vec3& operator*=(const vec3& v2);
+    vec3& operator/=(const vec3& v2);
+    vec3& operator*=(const float t);
+    vec3& operator/=(const float t);
 
     inline float length() const {
         return static_cast<float>( sqrt(squared_length()) );
@@ -29,7 +29,7 @@ public:
     inline float squared_length() const {
         return x*x + y*y + z*z;
     }
-    inline void make_unit_vector();
+    void make_unit_vector();
 
     union { float x; float r; };
     union { float y; float g; };

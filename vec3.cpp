@@ -4,45 +4,45 @@
 
 #include "vec3.h"
 
-vec3 &vec3::operator+=(const vec3 &v2) {
+vec3& vec3::operator+=(const vec3& v2) {
     x += v2.x;
     y += v2.y;
     z += v2.z;
     return *this;
 }
 
-vec3 &vec3::operator-=(const vec3 &v2) {
+vec3& vec3::operator-=(const vec3& v2) {
     x -= v2.x;
     y -= v2.y;
     z -= v2.z;
     return *this;
 }
 
-vec3 &vec3::operator*=(const vec3 &v2) {
+vec3& vec3::operator*=(const vec3& v2) {
     x *= v2.x;
     y *= v2.y;
     z *= v2.z;
     return *this;
 }
 
-vec3 &vec3::operator/=(const vec3 &v2) {
+vec3& vec3::operator/=(const vec3& v2) {
     x /= v2.x;
     y /= v2.y;
     z /= v2.z;
     return *this;
 }
 
-vec3 &vec3::operator*=(const float t) {
+vec3& vec3::operator*=(const float t) {
     x *= t;
     y *= t;
     z *= t;
     return *this;
 }
 
-vec3 &vec3::operator/=(const float t) {
-    x *= t;
-    y *= t;
-    z *= t;
+vec3& vec3::operator/=(const float t) {
+    x /= t;
+    y /= t;
+    z /= t;
     return *this;
 }
 
