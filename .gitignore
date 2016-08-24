@@ -1,5 +1,11 @@
+# Jetbrains Stuffs
 .idea/
+
+# Unwanted Folders
 build/
+
+# Vim Scripts
+.ycm_extra_conf.* 
 
 # Compiled Object files
 *.slo

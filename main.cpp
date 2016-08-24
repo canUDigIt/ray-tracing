@@ -10,19 +10,17 @@
 #include "sphere.h"
 #include "camera.h"
 
-vec3 random_in_unit_sphere() {
-    vec3 p;
-    do {
-        p = 2.f*vec3(drand48(), drand48(), drand48()) - vec3(1.f, 1.f, 1.f);
-    } while(p.squared_length() >= 1.f);
-    return p;
-}
-
-vec3 color(const ray& r, const std::unique_ptr<hitable>& world) {
+vec3 color(const ray& r, const std::unique_ptr<hitable>& world, int depth) {
     hit_record rec;
     if (world->hit(r, 0.001f, std::numeric_limits<float>::max(), rec)) {
-        vec3 target = rec.p + rec.normal + random_in_unit_sphere();
-        return 0.5f*color( ray(rec.p, target - rec.p), world );
+        ray scattered;
+        vec3 attenuation;
+        if (depth < 50 && rec.mat_ptr->scatter(r, rec, attenuation, scattered)) {
+            return attenuation*color(scattered, world, depth + 1);
+        }
+        else {
+            return vec3(0.f, 0.f, 0.f);
+        }
     }
     else {
         vec3 unit_direction = unit_vector(r.direction);
@@ -40,9 +38,18 @@ int main() {
     std::ofstream image("test.ppm", std::ios::trunc);
     image << "P3\n" << nx << " " << ny << "\n255" << std::endl;
 
-    std::vector< std::unique_ptr<hitable> > list(2);
-    list[0].reset( new sphere(vec3(0.f, 0.f, -1.f), 0.5f) );
-    list[1].reset( new sphere(vec3(0.f, -100.5f, -1.f), 100) );
+    std::vector< std::unique_ptr<hitable> > list(4);
+
+    std::unique_ptr<material> lambertian1( new lambertian(vec3(0.8f, 0.3f, 0.3f)) );
+    std::unique_ptr<material> lambertian2( new lambertian(vec3(0.8f, 0.8f, 0.0f)) );
+    std::unique_ptr<material> metal1( new metal(vec3(0.8f, 0.6f, 0.2f), 0.3f) );
+    std::unique_ptr<material> metal2( new metal(vec3(0.8f, 0.8f, 0.8f), 1.f) );
+
+    list[0].reset( new sphere( vec3(0.f, 0.f, -1.f), 0.5f, std::move(lambertian1) ) );
+    list[1].reset( new sphere( vec3(0.f, -100.5f, -1.f), 100.f, std::move(lambertian2) ) );
+    list[2].reset( new sphere( vec3(1.f, 0.f, -1.f), 0.5f, std::move(metal1) ) );
+    list[3].reset( new sphere( vec3(-1.f, 0.f, -1.f), 0.5f, std::move(metal2) ) );
+    
     std::unique_ptr<hitable> world( new hitable_list(list.data(), list.size()) );
 
     camera cam;
@@ -54,7 +61,7 @@ int main() {
                 float u = (i + drand48()) / static_cast<float>(nx);
                 float v = (j + drand48()) / static_cast<float>(ny);
                 ray r = cam.get_ray(u, v);
-                final_color += color(r, world);
+                final_color += color(r, world, 0);
             }
             final_color /= static_cast<float>(ns);
             final_color = vec3( sqrt(final_color.x), sqrt(final_color.y), sqrt(final_color.z) );
