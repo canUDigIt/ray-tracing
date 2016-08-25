@@ -38,17 +38,19 @@ int main() {
     std::ofstream image("test.ppm", std::ios::trunc);
     image << "P3\n" << nx << " " << ny << "\n255" << std::endl;
 
-    std::vector< std::unique_ptr<hitable> > list(4);
+    std::vector< std::unique_ptr<hitable> > list(5);
 
-    std::unique_ptr<material> lambertian1( new lambertian(vec3(0.8f, 0.3f, 0.3f)) );
+    std::unique_ptr<material> lambertian1( new lambertian(vec3(0.1f, 0.2f, 0.5f)) );
     std::unique_ptr<material> lambertian2( new lambertian(vec3(0.8f, 0.8f, 0.0f)) );
     std::unique_ptr<material> metal1( new metal(vec3(0.8f, 0.6f, 0.2f), 0.3f) );
-    std::unique_ptr<material> metal2( new metal(vec3(0.8f, 0.8f, 0.8f), 1.f) );
+    std::unique_ptr<material> dielectric1( new dielectric(1.5f) );
+    std::unique_ptr<material> dielectric2( new dielectric(1.5f) );
 
     list[0].reset( new sphere( vec3(0.f, 0.f, -1.f), 0.5f, std::move(lambertian1) ) );
     list[1].reset( new sphere( vec3(0.f, -100.5f, -1.f), 100.f, std::move(lambertian2) ) );
     list[2].reset( new sphere( vec3(1.f, 0.f, -1.f), 0.5f, std::move(metal1) ) );
-    list[3].reset( new sphere( vec3(-1.f, 0.f, -1.f), 0.5f, std::move(metal2) ) );
+    list[3].reset( new sphere( vec3(-1.f, 0.f, -1.f), 0.5f, std::move(dielectric1) ) );
+    list[4].reset( new sphere( vec3(-1.f, 0.f, -1.f), -0.45, std::move(dielectric2) ) );
     
     std::unique_ptr<hitable> world( new hitable_list(list.data(), list.size()) );
 
