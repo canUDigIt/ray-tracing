@@ -90,4 +90,28 @@ inline vec3 unit_vector(const vec3& v) {
     return v / v.length();
 }
 
+inline bool refract(const vec3& v, const vec3& n, float ni_over_nt, vec3& refracted) {
+    vec3 uv = unit_vector(v);
+    float dt = dot(uv, n);
+    float discriminant = 1.f - ni_over_nt*ni_over_nt*(1-dt*dt);
+    if (discriminant > 0.f) {
+        refracted = ni_over_nt*(uv - n*dt) - n*sqrt(discriminant);
+        return true;
+    }
+    else
+        return false;
+}
+
+inline vec3 reflect(const vec3& v, const vec3& n) {
+    return v - 2*dot(v, n)*n;
+}
+
+inline vec3 random_in_unit_sphere() {
+    vec3 p;
+    do {
+        p = 2.f*vec3(drand48(), drand48(), drand48()) - vec3(1.f, 1.f, 1.f);
+    } while(p.squared_length() >= 1.f);
+    return p;
+}
+
 #endif //RAY_TRACING_VEC3_H
