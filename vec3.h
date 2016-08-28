@@ -8,6 +8,8 @@
 #include <iostream>
 #include <cmath>
 
+#include "random_numbers.h"
+
 class vec3 {
 public:
     vec3() {}
@@ -109,7 +111,7 @@ inline vec3 reflect(const vec3& v, const vec3& n) {
 inline vec3 random_in_unit_sphere() {
     vec3 p;
     do {
-        p = 2.f*vec3(drand48(), drand48(), drand48()) - vec3(1.f, 1.f, 1.f);
+        p = 2.f*vec3(uniform_random<float>(), uniform_random<float>(), uniform_random<float>()) - vec3(1.f, 1.f, 1.f);
     } while(p.squared_length() >= 1.f);
     return p;
 }

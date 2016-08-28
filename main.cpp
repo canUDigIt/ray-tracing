@@ -3,12 +3,12 @@
 #include <limits>
 #include <vector>
 #include <memory>
-#include <ctime>
-#include <random>
 
 #include "hitable_list.h"
 #include "sphere.h"
 #include "camera.h"
+#include "random_numbers.h"
+#include "math_constants.h"
 
 vec3 color(const ray& r, const std::unique_ptr<hitable>& world, int depth) {
     hit_record rec;
@@ -46,7 +46,7 @@ int main() {
     //std::unique_ptr<material> dielectric1( new dielectric(1.5f) );
     //std::unique_ptr<material> dielectric2( new dielectric(1.5f) );
 
-    float R = cos(M_PI/4);
+    float R = cos(pi/4);
     list[0].reset( new sphere( vec3(-R, 0.f, -1.f), R, std::move(lambertian1) ) );
     list[1].reset( new sphere( vec3( R, 0.f, -1.f), R, std::move(lambertian2) ) );
     //list[2].reset( new sphere( vec3(1.f, 0.f, -1.f), 0.5f, std::move(metal1) ) );
@@ -61,8 +61,8 @@ int main() {
         for (int i = 0; i < nx; ++i) {
             vec3 final_color(0.f, 0.f, 0.f);
             for (int s = 0; s < ns; ++s) {
-                float u = (i + drand48()) / static_cast<float>(nx);
-                float v = (j + drand48()) / static_cast<float>(ny);
+                float u = (i + uniform_random<float>()) / static_cast<float>(nx);
+                float v = (j + uniform_random<float>()) / static_cast<float>(ny);
                 ray r = cam.get_ray(u, v);
                 final_color += color(r, world, 0);
             }

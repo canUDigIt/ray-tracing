@@ -5,6 +5,8 @@
 #ifndef RAY_TRACING_SPHERE_H
 #define RAY_TRACING_SPHERE_H
 
+#include <memory>
+
 #include "hitable.h"
 #include "material.h"
 

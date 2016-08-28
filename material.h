@@ -3,8 +3,7 @@
 
 #include "ray.h"
 #include "hitable.h"
-
-
+#include "random_numbers.h"
 
 class material {
     public:
@@ -65,7 +64,7 @@ class dielectric : public material {
             else {
                 reflect_prob = 1.0f;
             }
-            if (drand48() < reflect_prob) {
+            if (uniform_random<float>() < reflect_prob) {
                 scattered = ray(rec.p, reflected);
             }
             else {

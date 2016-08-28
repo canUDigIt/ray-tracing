@@ -13,5 +13,7 @@ set(SOURCE_FILES
         hitable.h
         hitable_list.h
         sphere.h
-        camera.h)
+        camera.h
+	random_numbers.h
+	math_constants.h)
 add_executable(ray_tracing ${SOURCE_FILES})

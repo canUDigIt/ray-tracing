@@ -6,12 +6,13 @@
 #define RAY_TRACING_CAMERA_H
 
 #include "ray.h"
+#include "math_constants.h"
 
 class camera {
 public:
     camera(vec3 lookfrom, vec3 lookat, vec3 vup, float vfov, float aspect) { // vfov is top to bottom in degrees
         vec3 u, v, w;
-        float theta = vfov*M_PI/180;
+        float theta = vfov*pi/180;
         float half_height = tan(theta/2);
         float half_width = aspect * half_height;
         origin = lookfrom;
