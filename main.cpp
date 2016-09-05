@@ -10,6 +10,40 @@
 #include "random_numbers.h"
 #include "math_constants.h"
 
+template<typename T>
+std::unique_ptr<T> make_unique(T* ptr) {
+    return std::unique_ptr<T>(ptr);
+}
+
+hitable* random_scene() {
+    int n = 500;
+    std::vector< std::unique_ptr<hitable> > list(n+1);
+    list[0] = make_unique( new sphere(vec3(0, -1000, 0), 1000, std::unique_ptr<material>(new lambertian(vec3(0.5, 0.5, 0.5)))) );
+    int i = 1;
+    for (int a = -11; a < 11; a++) {
+        for (int b = -11; b < 11; b++) {
+                float choose_mat = uniform_random<float>();
+                vec3 center(a+0.9*uniform_random<float>(), 0.2, b+0.9*uniform_random<float>());
+                if ((center - vec3(4, 0.2, 0)).length() > 0.9) {
+                    if (choose_mat < 0.8) { // diffuse
+                        list[i++] = make_unique( new sphere(center, 0.2, std::unique_ptr<material>( new lambertian(vec3(uniform_random<float>()*uniform_random<float>(), uniform_random<float>()*uniform_random<float>(), uniform_random<float>()*uniform_random<float>())))) ); 
+                    }
+                    else if (choose_mat < 0.95) {
+                        list[i++] = make_unique( new sphere(center, 0.2, std::unique_ptr<material>( new metal(vec3(0.5*(1+uniform_random<float>()), 0.5*(1+uniform_random<float>()), 0.5*(1+uniform_random<float>())), 0.5*uniform_random<float>()))) );
+                    }
+                    else { // glass
+                        list[i++] = make_unique( new sphere(center, 0.2, std::unique_ptr<material>(new dielectric(1.5))) );
+                    }
+                }
+        }
+    }
+    list[i++] = make_unique( new sphere(vec3(0, 1, 0), 1.0, std::unique_ptr<material>(new dielectric(1.5))) );
+    list[i++] = make_unique( new sphere(vec3(-4, 1, 0), 1.0, std::unique_ptr<material>(new lambertian(vec3(04, 0.2, 0.1)))) );
+    list[i++] = make_unique( new sphere(vec3(4, 1, 0), 1.0, std::unique_ptr<material>(new metal(vec3(0.7, 0.6, 0.5), 0.0))) );
+
+    return new hitable_list(list.data(), i);
+}
+
 vec3 color(const ray& r, const std::unique_ptr<hitable>& world, int depth) {
     hit_record rec;
     if (world->hit(r, 0.001f, std::numeric_limits<float>::max(), rec)) {
@@ -38,24 +72,29 @@ int main() {
     std::ofstream image("test.ppm", std::ios::trunc);
     image << "P3\n" << nx << " " << ny << "\n255" << std::endl;
 
-    std::vector< std::unique_ptr<hitable> > list(2);
+    std::vector< std::unique_ptr<hitable> > list(5);
 
-    std::unique_ptr<material> lambertian1( new lambertian(vec3(0.f, 0.f, 1.f)) );
-    std::unique_ptr<material> lambertian2( new lambertian(vec3(1.f, 0.f, 0.f)) );
-    //std::unique_ptr<material> metal1( new metal(vec3(0.8f, 0.6f, 0.2f), 0.3f) );
-    //std::unique_ptr<material> dielectric1( new dielectric(1.5f) );
-    //std::unique_ptr<material> dielectric2( new dielectric(1.5f) );
+    std::unique_ptr<material> lambertian1( new lambertian(vec3(0.1f, 0.2f, 0.5f)) );
+    std::unique_ptr<material> lambertian2( new lambertian(vec3(0.8f, 0.8f, 0.f)) );
+    std::unique_ptr<material> metal1( new metal(vec3(0.8f, 0.6f, 0.2f), 0.3f) );
+    std::unique_ptr<material> dielectric1( new dielectric(1.5f) );
+    std::unique_ptr<material> dielectric2( new dielectric(1.5f) );
 
     float R = cos(pi/4);
-    list[0].reset( new sphere( vec3(-R, 0.f, -1.f), R, std::move(lambertian1) ) );
-    list[1].reset( new sphere( vec3( R, 0.f, -1.f), R, std::move(lambertian2) ) );
-    //list[2].reset( new sphere( vec3(1.f, 0.f, -1.f), 0.5f, std::move(metal1) ) );
-    //list[3].reset( new sphere( vec3(-1.f, 0.f, -1.f), 0.5f, std::move(dielectric1) ) );
-    //list[4].reset( new sphere( vec3(-1.f, 0.f, -1.f), -0.45, std::move(dielectric2) ) );
+    list[0].reset( new sphere( vec3(0.f, 0.f, -1.f), 0.5f, std::move(lambertian1) ) );
+    list[1].reset( new sphere( vec3(0.f, 100.5f, -1.f), 100.f, std::move(lambertian2) ) );
+    list[2].reset( new sphere( vec3(1.f, 0.f, -1.f), 0.5f, std::move(metal1) ) );
+    list[3].reset( new sphere( vec3(-1.f, 0.f, -1.f), 0.5f, std::move(dielectric1) ) );
+    list[4].reset( new sphere( vec3(-1.f, 0.f, -1.f), -0.45, std::move(dielectric2) ) );
     
-    std::unique_ptr<hitable> world( new hitable_list(list.data(), list.size()) );
+    std::unique_ptr<hitable> world( random_scene() );
 
-    camera cam(vec3(-2, 2, 1), vec3(0, 0, -1), vec3(0, 1, 0), 90, static_cast<float>(nx) / static_cast<float>(ny));
+    vec3 lookfrom(3,3,2);
+    vec3 lookat(0,0,-1);
+    float dist_to_focus = (lookfrom-lookat).length();
+    float aperture = 2.0;
+
+    camera cam(lookfrom, lookat, vec3(0, 1, 0), 20, static_cast<float>(nx) / static_cast<float>(ny), aperture, dist_to_focus);
 
     for (int j = ny-1; j >= 0; --j) {
         for (int i = 0; i < nx; ++i) {
