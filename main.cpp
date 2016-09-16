@@ -7,25 +7,25 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 
-std::vector<glm::vec3> vertices = { 
-    glm::vec3{  -2.5703,   0.78053,  -2.4e-05}, glm::vec3{ -0.89264,  0.022582,  0.018577}, 
-    glm::vec3{   1.6878, -0.017131,  0.022032}, glm::vec3{   3.4659,  0.025667,  0.018577}, 
-    glm::vec3{  -2.5703,   0.78969, -0.001202}, glm::vec3{ -0.89264,   0.25121,   0.93573}, 
-    glm::vec3{   1.6878,   0.25121,    1.1097}, glm::vec3{   3.5031,   0.25293,   0.93573}, 
-    glm::vec3{  -2.5703,    1.0558, -0.001347}, glm::vec3{ -0.89264,    1.0558,    1.0487}, 
-    glm::vec3{   1.6878,    1.0558,    1.2437}, glm::vec3{   3.6342,    1.0527,    1.0487}, 
-    glm::vec3{  -2.5703,    1.0558,        0.}, glm::vec3{ -0.89264,    1.0558,       0.}, 
-    glm::vec3{   1.6878,    1.0558,        0.}, glm::vec3{   3.6342,    1.0527,       0.}, 
-    glm::vec3{  -2.5703,    1.0558,  0.001347}, glm::vec3{ -0.89264,    1.0558,   -1.0487}, 
-    glm::vec3{   1.6878,    1.0558,   -1.2437}, glm::vec3{   3.6342,    1.0527,   -1.0487}, 
-    glm::vec3{  -2.5703,   0.78969,  0.001202}, glm::vec3{ -0.89264,   0.25121,  -0.93573}, 
-    glm::vec3{   1.6878,   0.25121,   -1.1097}, glm::vec3{   3.5031,   0.25293,  -0.93573}, 
-    glm::vec3{   3.5031,   0.25293,        0.}, glm::vec3{  -2.5703,   0.78969,       0.}, 
-    glm::vec3{   1.1091,    1.2179,        0.}, glm::vec3{    1.145,     6.617,       0.}, 
-    glm::vec3{   4.0878,    1.2383,        0.}, glm::vec3{  -2.5693,    1.1771, -0.081683}, 
-    glm::vec3{  0.98353,    6.4948, -0.081683}, glm::vec3{ -0.72112,    1.1364, -0.081683}, 
-    glm::vec3{   0.9297,     6.454,        0.}, glm::vec3{  -0.7929,     1.279,       0.}, 
-    glm::vec3{  0.91176,    1.2994,        0.} 
+std::vector<glm::vec4> vertices = { 
+    {  -2.5703,   0.78053,  -2.4e-05, 1}, { -0.89264,  0.022582,  0.018577, 1}, 
+    {   1.6878, -0.017131,  0.022032, 1}, {   3.4659,  0.025667,  0.018577, 1}, 
+    {  -2.5703,   0.78969, -0.001202, 1}, { -0.89264,   0.25121,   0.93573, 1}, 
+    {   1.6878,   0.25121,    1.1097, 1}, {   3.5031,   0.25293,   0.93573, 1}, 
+    {  -2.5703,    1.0558, -0.001347, 1}, { -0.89264,    1.0558,    1.0487, 1}, 
+    {   1.6878,    1.0558,    1.2437, 1}, {   3.6342,    1.0527,    1.0487, 1}, 
+    {  -2.5703,    1.0558,        0., 1}, { -0.89264,    1.0558,       0., 1}, 
+    {   1.6878,    1.0558,        0., 1}, {   3.6342,    1.0527,       0., 1}, 
+    {  -2.5703,    1.0558,  0.001347, 1}, { -0.89264,    1.0558,   -1.0487, 1}, 
+    {   1.6878,    1.0558,   -1.2437, 1}, {   3.6342,    1.0527,   -1.0487, 1}, 
+    {  -2.5703,   0.78969,  0.001202, 1}, { -0.89264,   0.25121,  -0.93573, 1}, 
+    {   1.6878,   0.25121,   -1.1097, 1}, {   3.5031,   0.25293,  -0.93573, 1}, 
+    {   3.5031,   0.25293,        0., 1}, {  -2.5703,   0.78969,       0., 1}, 
+    {   1.1091,    1.2179,        0., 1}, {    1.145,     6.617,       0., 1}, 
+    {   4.0878,    1.2383,        0., 1}, {  -2.5693,    1.1771, -0.081683, 1}, 
+    {  0.98353,    6.4948, -0.081683, 1}, { -0.72112,    1.1364, -0.081683, 1}, 
+    {   0.9297,     6.454,        0., 1}, {  -0.7929,     1.279,       0., 1}, 
+    {  0.91176,    1.2994,        0., 1} 
 }; 
 
 const std::vector<glm::uint> triangles = { 
@@ -87,8 +87,8 @@ static const auto inchToMillimeters = 25.4f;
 auto nearClippingPlane = 0.1f;
 auto farClippingPlane = 1000.f;
 
-glm::uint imageWidth = 512;
-glm::uint imageHeight = 512;
+glm::uint imageWidth = 640;
+glm::uint imageHeight = 480;
 
 enum class FitResolutionGate { kFill = 0, kOverscan };
 FitResolutionGate fitFilm = FitResolutionGate::kOverscan;
@@ -155,17 +155,18 @@ int main() {
     glm::mat4 worldToCamera = glm::inverse(cameraToWorld);
     auto canvasWidth = 2.f;
     auto canvasHeight = 2.f;
+    auto numberOfTriangle = triangles.size() / 3;
 
-    for (glm::uint i = 0; i < triangles.size(); ++i) {
-        const glm::vec3& v0World = vertices[triangles[i * 3]];
-        const glm::vec3& v1World = vertices[triangles[i * 3 + 1]];
-        const glm::vec3& v2World = vertices[triangles[i * 3 + 1]];
+    for (glm::uint i = 0; i < numberOfTriangle; ++i) {
+        const glm::vec4& v0World = vertices[triangles[i * 3]];
+        const glm::vec4& v1World = vertices[triangles[i * 3 + 1]];
+        const glm::vec4& v2World = vertices[triangles[i * 3 + 1]];
         glm::ivec2 v0Raster, v1Raster, v2Raster;
 
         auto visible = true;
-        visible &= computePixelCoordinates(glm::vec4(v0World, 1), worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v0Raster);
-        visible &= computePixelCoordinates(glm::vec4(v1World, 1), worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v1Raster);
-        visible &= computePixelCoordinates(glm::vec4(v2World, 1), worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v2Raster);
+        visible &= computePixelCoordinates(v0World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v0Raster);
+        visible &= computePixelCoordinates(v1World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v1Raster);
+        visible &= computePixelCoordinates(v2World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v2Raster);
 
         auto red = visible ? 0 : 255;
         image << "<line x1=\"" << v0Raster.x << "\" y1=\"" << v0Raster.y << "\" x2=\"" << v1Raster.x << "\" y2=\"" << v1Raster.y << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
