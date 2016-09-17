@@ -1,13 +1,12 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <cstdint>
 
-#include <glm/vec3.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
-#include <glm/vec4.hpp>
-#include <glm/mat4x4.hpp>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
-std::vector<glm::vec4> vertices = { 
+std::vector<Eigen::Vector4f> vertices = { 
     {  -2.5703,   0.78053,  -2.4e-05, 1}, { -0.89264,  0.022582,  0.018577, 1}, 
     {   1.6878, -0.017131,  0.022032, 1}, {   3.4659,  0.025667,  0.018577, 1}, 
     {  -2.5703,   0.78969, -0.001202, 1}, { -0.89264,   0.25121,   0.93573, 1}, 
@@ -28,7 +27,7 @@ std::vector<glm::vec4> vertices = {
     {  0.91176,    1.2994,        0., 1} 
 }; 
 
-const std::vector<glm::uint> triangles = { 
+const std::vector<uint32_t> triangles = { 
      4,   0,   5,   0,   1,   5,   1,   2,   5,   5,   2,   6,   3,   7,   2, 
      2,   7,   6,   5,   9,   4,   4,   9,   8,   5,   6,   9,   9,   6,  10, 
      7,  11,   6,   6,  11,  10,   9,  13,   8,   8,  13,  12,  10,  14,   9, 
@@ -43,34 +42,35 @@ const std::vector<glm::uint> triangles = {
 };
 
 bool computePixelCoordinates(
-	const glm::vec4& worldCoordinate,
-    const glm::mat4& worldToCamera,
+	const Eigen::Vector4f& worldCoordinate,
+    const Eigen::Matrix4f& worldToCamera,
     const float& bottom,
     const float& left,
     const float& top,
     const float& right,
     const float& near,
-    const glm::uint& imageWidth,
-    const glm::uint& imageHeight,
-    glm::ivec2& pixelCoordinate)
+    const uint32_t& imageWidth,
+    const uint32_t& imageHeight,
+    Eigen::Vector2i& pixelCoordinate)
 {
     auto cameraCoordinate = worldToCamera * worldCoordinate;
-    glm::vec2 screenCoordinate{ 
-        cameraCoordinate.x / -(cameraCoordinate.z) * near,
-        cameraCoordinate.y / -(cameraCoordinate.z) * near
+
+    Eigen::Vector2f screenCoordinate{ 
+        cameraCoordinate.x() / -cameraCoordinate.z() * near,
+        cameraCoordinate.y() / -cameraCoordinate.z() * near
     };
 
-    glm::vec2 ndcCoordinate{
-        (screenCoordinate.x + right) / (2 * right),
-        (screenCoordinate.y + top) / (2 * top)
+    Eigen::Vector2f ndcCoordinate{
+        (screenCoordinate.x() + right) / (2 * right),
+        (screenCoordinate.y() + top) / (2 * top)
     };
 
-    pixelCoordinate.x = static_cast<int>(ndcCoordinate.x * imageWidth);
-    pixelCoordinate.y = static_cast<int>(ndcCoordinate.y * imageHeight);
+    pixelCoordinate.x() = static_cast<int>(ndcCoordinate.x() * imageWidth);
+    pixelCoordinate.y() = static_cast<int>((1 - ndcCoordinate.y()) * imageHeight);
 
     auto visible = true;
-    if (screenCoordinate.x < 1 || screenCoordinate.x > right ||
-        screenCoordinate.y < bottom || screenCoordinate.y > top)
+    if (screenCoordinate.x() < 1 || screenCoordinate.x() > right ||
+        screenCoordinate.y() < bottom || screenCoordinate.y() > top)
     {
         visible = false;
     }
@@ -87,18 +87,18 @@ static const auto inchToMillimeters = 25.4f;
 auto nearClippingPlane = 0.1f;
 auto farClippingPlane = 1000.f;
 
-glm::uint imageWidth = 640;
-glm::uint imageHeight = 480;
+uint32_t imageWidth = 640;
+uint32_t imageHeight = 480;
 
 enum class FitResolutionGate { kFill = 0, kOverscan };
 FitResolutionGate fitFilm = FitResolutionGate::kOverscan;
 
 float calculateRightCanvasCoord() {
-    return ((filmApertureWidth * inchToMillimeters / 2) / focalLength) * nearClippingPlane;
+    return ((filmApertureWidth * inchToMillimeters / 2.f) / focalLength) * nearClippingPlane;
 }
 
 float calculateTopCanvasCoord() {
-    return ((filmApertureHeight * inchToMillimeters / 2) / focalLength) * nearClippingPlane;
+    return ((filmApertureHeight * inchToMillimeters / 2.f) / focalLength) * nearClippingPlane;
 }
 
 int main() {
@@ -146,22 +146,23 @@ int main() {
     image.open("./pinhole.svg");
     image << "<svg version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns=\"http://www.w3.org/2000/svg\" width=\"" << imageWidth << "\" height=\"" << imageHeight << "\">" << std::endl;
 
-    glm::mat4 cameraToWorld{ 
-        -0.95424f, 0.f, 0.299041f, 0.f, 
-         0.0861242f, 0.95763f, 0.274823f, 0.f, 
-        -0.28637f, 0.288002f, -0.913809f, 0.f, 
-        -3.734612f, 7.610426f, -14.152769f, 1.f
-    };
-    glm::mat4 worldToCamera = glm::inverse(cameraToWorld);
+    Eigen::Matrix4f cameraToWorld;
+    cameraToWorld << 
+        -0.95424f, 0.0861242f,  -0.28637f,  -3.734612f,
+              0.f,   0.95763f,  0.288002f,   7.610426f, 
+        0.299041f,  0.274823f, -0.913809f, -14.152769f,
+              0.f,        0.f,        0.f,         1.f;
+
+    auto worldToCamera = cameraToWorld.inverse();
     auto canvasWidth = 2.f;
     auto canvasHeight = 2.f;
     auto numberOfTriangle = triangles.size() / 3;
 
-    for (glm::uint i = 0; i < numberOfTriangle; ++i) {
-        const glm::vec4& v0World = vertices[triangles[i * 3]];
-        const glm::vec4& v1World = vertices[triangles[i * 3 + 1]];
-        const glm::vec4& v2World = vertices[triangles[i * 3 + 2]];
-        glm::ivec2 v0Raster, v1Raster, v2Raster;
+    for (uint32_t i = 0; i < numberOfTriangle; ++i) {
+        const Eigen::Vector4f& v0World = vertices[triangles[i * 3]];
+        const Eigen::Vector4f& v1World = vertices[triangles[i * 3 + 1]];
+        const Eigen::Vector4f& v2World = vertices[triangles[i * 3 + 2]];
+        Eigen::Vector2i v0Raster, v1Raster, v2Raster;
 
         auto visible = true;
         visible &= computePixelCoordinates(v0World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v0Raster);
@@ -169,9 +170,9 @@ int main() {
         visible &= computePixelCoordinates(v2World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v2Raster);
 
         auto red = visible ? 0 : 255;
-        image << "<line x1=\"" << v0Raster.x << "\" y1=\"" << v0Raster.y << "\" x2=\"" << v1Raster.x << "\" y2=\"" << v1Raster.y << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
-        image << "<line x1=\"" << v1Raster.x << "\" y1=\"" << v1Raster.y << "\" x2=\"" << v2Raster.x << "\" y2=\"" << v2Raster.y << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
-        image << "<line x1=\"" << v2Raster.x << "\" y1=\"" << v2Raster.y << "\" x2=\"" << v0Raster.x << "\" y2=\"" << v0Raster.y << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n";
+        image << "<line x1=\"" << v0Raster.x() << "\" y1=\"" << v0Raster.y() << "\" x2=\"" << v1Raster.x() << "\" y2=\"" << v1Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
+        image << "<line x1=\"" << v1Raster.x() << "\" y1=\"" << v1Raster.y() << "\" x2=\"" << v2Raster.x() << "\" y2=\"" << v2Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
+        image << "<line x1=\"" << v2Raster.x() << "\" y1=\"" << v2Raster.y() << "\" x2=\"" << v0Raster.x() << "\" y2=\"" << v0Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n";
     }
 
     image << "</svg>\n";
