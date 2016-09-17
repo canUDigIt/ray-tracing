@@ -160,7 +160,7 @@ int main() {
     for (glm::uint i = 0; i < numberOfTriangle; ++i) {
         const glm::vec4& v0World = vertices[triangles[i * 3]];
         const glm::vec4& v1World = vertices[triangles[i * 3 + 1]];
-        const glm::vec4& v2World = vertices[triangles[i * 3 + 1]];
+        const glm::vec4& v2World = vertices[triangles[i * 3 + 2]];
         glm::ivec2 v0Raster, v1Raster, v2Raster;
 
         auto visible = true;
