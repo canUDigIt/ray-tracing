@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <cstdint>
 
 #include <Eigen/Core>
@@ -101,82 +102,53 @@ float calculateTopCanvasCoord() {
     return ((filmApertureHeight * inchToMillimeters / 2.f) / focalLength) * nearClippingPlane;
 }
 
+float edgeFunction(const Eigen::Vector2f& a, const Eigen::Vector2f& b, const Eigen::Vector2f& c) {
+    return (c.x() - a.x()) * (b.y() - a.y()) - (c.y() - a.y()) * (b.x() - a.x());
+}
+
+using Rgb = std::array<char, 3>;
+
 int main() {
-    auto filmAspectRatio = filmApertureWidth / filmApertureHeight;
-    auto deviceAspectRatio = imageWidth / static_cast<float>(imageHeight);
+    Eigen::Vector2f v0  = {491.407, 411.407};
+    Eigen::Vector2f v1 = {148.593, 68.5928};
+    Eigen::Vector2f v2 = {148.593, 411.407};
+    Eigen::Vector3f c0 = {1, 0, 0};
+    Eigen::Vector3f c1 = {0, 1, 0};
+    Eigen::Vector3f c2 = {0, 0, 1};
 
-    auto xScale = 1.f;
-    auto yScale = 1.f;
+    const uint32_t w = 512;
+    const uint32_t h = 512;
 
-    switch (fitFilm) {
-        case FitResolutionGate::kFill:
-            if (filmAspectRatio > deviceAspectRatio)
-            {
-                xScale = deviceAspectRatio / filmAspectRatio;
+    std::array<Rgb, w * h> framebuffer;
+    framebuffer.fill({0,0,0});
+
+    auto area = edgeFunction(v0, v1, v2);
+
+    for (uint32_t j = 0; j < h; ++j) {
+        for (uint32_t i = 0; i < w; ++i) {
+            Eigen::Vector2f p = {i + 0.5f, j + 0.5f};
+            float w0 = edgeFunction(v1, v2, p);
+            float w1 = edgeFunction(v2, v0, p);
+            float w2 = edgeFunction(v0, v1, p);
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                w0 /= area;
+                w1 /= area;
+                w2 /= area;
+                float r = w0 * c0.x() + w1 * c1.x() + w2 * c2.x();
+                float g = w0 * c0.y() + w1 * c1.y() + w2 * c2.y();
+                float b = w0 * c0.z() + w1 * c1.z() + w2 * c2.z();
+                framebuffer[j * w + i][0] = static_cast<char>(r * 255);
+                framebuffer[j * w + i][1] = static_cast<char>(g * 255);
+                framebuffer[j * w + i][2] = static_cast<char>(b * 255);
             }
-            else {
-                yScale = filmAspectRatio / deviceAspectRatio;
-            }
-            break;
-        case FitResolutionGate::kOverscan:
-            if (filmAspectRatio > deviceAspectRatio) {
-                yScale = filmAspectRatio / deviceAspectRatio;
-            }
-            else {
-                xScale = deviceAspectRatio / filmAspectRatio;
-            }
-            break;
-        default:
-            break;
+        }
     }
 
-    auto top = calculateTopCanvasCoord() * yScale;
-    auto right = calculateRightCanvasCoord() * xScale;
-    auto bottom = -top;
-    auto left = -right;
-    const auto PI = 3.14f;
-
-    std::cout << "Screen window bottom-left, top-right coordinates (" << left << ", " << bottom
-       << ") (" << right << ", " << top << ")" << std::endl;
-    std::cout << "Film Aspect Ratio: " << filmAspectRatio << std::endl;
-    std::cout << "Device Aspect Ratio: " << deviceAspectRatio << std::endl;
-    std::cout << "Angle of view: " << 2 * atan((filmApertureWidth * inchToMillimeters / 2) / focalLength) * 180 / PI << std::endl;
-
-    std::ofstream image;
-    image.open("./pinhole.svg");
-    image << "<svg version=\"1.1\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns=\"http://www.w3.org/2000/svg\" width=\"" << imageWidth << "\" height=\"" << imageHeight << "\">" << std::endl;
-
-    Eigen::Matrix4f cameraToWorld;
-    cameraToWorld << 
-        -0.95424f, 0.0861242f,  -0.28637f,  -3.734612f,
-              0.f,   0.95763f,  0.288002f,   7.610426f, 
-        0.299041f,  0.274823f, -0.913809f, -14.152769f,
-              0.f,        0.f,        0.f,         1.f;
-
-    auto worldToCamera = cameraToWorld.inverse();
-    auto canvasWidth = 2.f;
-    auto canvasHeight = 2.f;
-    auto numberOfTriangle = triangles.size() / 3;
-
-    for (uint32_t i = 0; i < numberOfTriangle; ++i) {
-        const Eigen::Vector4f& v0World = vertices[triangles[i * 3]];
-        const Eigen::Vector4f& v1World = vertices[triangles[i * 3 + 1]];
-        const Eigen::Vector4f& v2World = vertices[triangles[i * 3 + 2]];
-        Eigen::Vector2i v0Raster, v1Raster, v2Raster;
-
-        auto visible = true;
-        visible &= computePixelCoordinates(v0World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v0Raster);
-        visible &= computePixelCoordinates(v1World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v1Raster);
-        visible &= computePixelCoordinates(v2World, worldToCamera, bottom, left, top, right, nearClippingPlane, imageWidth, imageHeight, v2Raster);
-
-        auto red = visible ? 0 : 255;
-        image << "<line x1=\"" << v0Raster.x() << "\" y1=\"" << v0Raster.y() << "\" x2=\"" << v1Raster.x() << "\" y2=\"" << v1Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
-        image << "<line x1=\"" << v1Raster.x() << "\" y1=\"" << v1Raster.y() << "\" x2=\"" << v2Raster.x() << "\" y2=\"" << v2Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n"; 
-        image << "<line x1=\"" << v2Raster.x() << "\" y1=\"" << v2Raster.y() << "\" x2=\"" << v0Raster.x() << "\" y2=\"" << v0Raster.y() << "\" style=\"stroke:rgb(" << red << ",0,0);stroke-width:1\" />\n";
-    }
-
-    image << "</svg>\n";
-    image.close();
+    std::ofstream imageFile;
+    imageFile.open("./raster2d.ppm");
+    imageFile << "P6\n" << w << " " << h << "\n255\n";
+    imageFile.write(framebuffer.front().data(), w * h * 3);
+    imageFile.close();
 
     return 0;
 }
