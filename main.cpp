@@ -73,7 +73,7 @@ bool convertToRaster(
     uint32_t imageHeight,
     Eigen::Vector4f& vertexRaster)
 {
-    auto cameraCoordinate = worldToCamera * vertexWorld;
+    Eigen::Vector4f cameraCoordinate = worldToCamera * vertexWorld;
 
     Eigen::Vector2f screenCoordinate{ 
         cameraCoordinate.x() / -cameraCoordinate.z() * near,
@@ -87,6 +87,7 @@ bool convertToRaster(
 
     vertexRaster.x() = (ndcCoordinate.x() + 1) / 2 * imageWidth;
     vertexRaster.y() = (1 - ndcCoordinate.y()) / 2 * imageHeight;
+    vertexRaster.z() = cameraCoordinate.z();
 }
 
 float min3(float a, float b, float c) { 
