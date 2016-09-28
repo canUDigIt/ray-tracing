@@ -7,6 +7,7 @@
 
 #include "cow.h"
 
+static constexpr auto PI = 3.14f;
 static constexpr auto inchToMillimeters = 25.4f;
 enum class FitResolutionGate { kFill = 0, kOverscan };
 
@@ -24,11 +25,11 @@ void computeScreenCoordinates(
     float filmAspectRatio = filmApertureWidth / filmApertureHeight;
     float deviceAspectRatio = imageWidth / static_cast<float>(imageHeight);
 
-    top = ((filmApertureHeight * inchToMillimeters / 2 ) / focalLength) * nearClippingPlane;
-    right = ((filmApertureWidth * inchToMillimeters / 2) / focalLength) * nearClippingPlane;
+    top = ((filmApertureHeight * inchToMillimeters / 2.f) / focalLength) * nearClippingPlane;
+    right = ((filmApertureWidth * inchToMillimeters / 2.f) / focalLength) * nearClippingPlane;
 
     // field of view (horizontal)
-    auto fov = 2 * 180 / M_PI * atan((filmApertureWidth * inchToMillimeters / 2) / focalLength);
+    auto fov = 2.f * 180.f / PI * atan((filmApertureWidth * inchToMillimeters / 2.f) / focalLength);
     std::cerr << "Field of view " << fov << std::endl;
 
     auto xScale = 1.f;
@@ -130,8 +131,6 @@ int main() {
         -1.63871, -5.74777, -40.400412, 1;
     worldToCamera.transposeInPlace();
     
-    Eigen::Matrix4f cameraToWorld = worldToCamera.inverse();
-
     float t, b, l, r;
 
     computeScreenCoordinates(
@@ -229,7 +228,7 @@ int main() {
                         auto nDotView = std::max(0.f, n.dot(viewDirection));
 
                         const auto M = 10;
-                        auto checker = (fmod(st.x() * M, 1.f) > 0.5f) ^ (fmod(st.y() + M, 1.f) < 0.5f);
+                        auto checker = (fmod(st.x() * M, 1.f) > 0.5f) ^ (fmod(st.y() * M, 1.f) < 0.5f);
                         auto c = 0.3f * (1.f - checker) + 0.7f * checker;
                         nDotView *= c;
                         framebuffer[y * imageWidth + x][0] = nDotView * 255;
