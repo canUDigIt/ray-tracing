@@ -5,6 +5,9 @@
 
 #include <Eigen/Geometry>
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
 #include "cow.h"
 
 static constexpr auto PI = 3.14f;
@@ -149,91 +152,137 @@ int main() {
     std::array<float, imageWidth * imageHeight> depthbuffer;
     depthbuffer.fill(farClippingPlane);
 
+    std::string objFile = "box.obj";
+    tinyobj::attrib_t attrib;
+    std::vector<tinyobj::shape_t> shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string err;
+
+    bool objecLoaded = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, objFile.c_str());
+
+    if (!err.empty()) {
+        std::cerr << err << std::endl;
+    }
+
+    if (!objecLoaded) {
+        return 1;
+    }
+
     auto startTime = std::chrono::high_resolution_clock::now();
 
-    for (auto i = 0; i < numberOfTriangles; ++i) {
-        Eigen::Vector4f v0 = Eigen::Vector4f::UnitW();
-        Eigen::Vector4f v1 = Eigen::Vector4f::UnitW();
-        Eigen::Vector4f v2 = Eigen::Vector4f::UnitW();
-        v0.block<3,1>(0,0) = vertices[nvertices[i * 3]].cast<float>();
-        v1.block<3,1>(0,0) = vertices[nvertices[i * 3 + 1]].cast<float>();
-        v2.block<3,1>(0,0) = vertices[nvertices[i * 3 + 2]].cast<float>();
+    for (auto shape = 0; shape < shapes.size(); ++shape) {
+        auto indexOffset = 0;
 
-        Eigen::Vector4f v0Raster, v1Raster, v2Raster;
+        for (auto face = 0; face < shapes[shape].mesh.num_face_vertices.size(); ++face) {
+            tinyobj::index_t idx0 = shapes[shape].mesh.indices[indexOffset];
+            tinyobj::index_t idx1 = shapes[shape].mesh.indices[indexOffset + 1];
+            tinyobj::index_t idx2 = shapes[shape].mesh.indices[indexOffset + 2];
+            indexOffset += shapes[shape].mesh.num_face_vertices[face];
 
-        convertToRaster(v0, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v0Raster);
-        convertToRaster(v1, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v1Raster);
-        convertToRaster(v2, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v2Raster);
+            Eigen::Vector4f v0 = {
+                attrib.vertices[3 * idx0.vertex_index],
+                attrib.vertices[3 * idx0.vertex_index + 1],
+                attrib.vertices[3 * idx0.vertex_index + 2],
+                1
+            };
+            Eigen::Vector4f v1 = {
+                attrib.vertices[3 * idx1.vertex_index],
+                attrib.vertices[3 * idx1.vertex_index + 1],
+                attrib.vertices[3 * idx1.vertex_index + 2],
+                1
+            };
+            Eigen::Vector4f v2 = {
+                attrib.vertices[3 * idx2.vertex_index],
+                attrib.vertices[3 * idx2.vertex_index + 1],
+                attrib.vertices[3 * idx2.vertex_index + 2],
+                1
+            };
 
-        v0Raster.z() = 1 / v0Raster.z();
-        v1Raster.z() = 1 / v1Raster.z();
-        v2Raster.z() = 1 / v2Raster.z();
+            Eigen::Vector4f v0Raster, v1Raster, v2Raster;
 
-        Eigen::Vector2f st0 = st[stindices[i * 3]].cast<float>();
-        Eigen::Vector2f st1 = st[stindices[i * 3 + 1]].cast<float>();
-        Eigen::Vector2f st2 = st[stindices[i * 3 + 2]].cast<float>();
+            convertToRaster(v0, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v0Raster);
+            convertToRaster(v1, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v1Raster);
+            convertToRaster(v2, worldToCamera, l, r, t, b, nearClippingPlane, imageWidth, imageHeight, v2Raster);
 
-        st0 *= v0Raster.z(), st1 *= v1Raster.z(), st2 *= v2Raster.z();
+            v0Raster.z() = 1 / v0Raster.z();
+            v1Raster.z() = 1 / v1Raster.z();
+            v2Raster.z() = 1 / v2Raster.z();
 
-        auto xmin = min3(v0Raster.x(), v1Raster.x(), v2Raster.x());
-        auto ymin = min3(v0Raster.y(), v1Raster.y(), v2Raster.y());
-        auto xmax = max3(v0Raster.x(), v1Raster.x(), v2Raster.x());
-        auto ymax = max3(v0Raster.y(), v1Raster.y(), v2Raster.y());
+            Eigen::Vector2f st0 = {
+                attrib.texcoords[2 * idx0.texcoord_index],
+                attrib.texcoords[2 * idx0.texcoord_index + 1],
+            };
+            Eigen::Vector2f st1 = {
+                attrib.texcoords[2 * idx1.texcoord_index],
+                attrib.texcoords[2 * idx1.texcoord_index + 1],
+            };
+            Eigen::Vector2f st2 = {
+                attrib.texcoords[2 * idx2.texcoord_index],
+                attrib.texcoords[2 * idx2.texcoord_index + 1],
+            };
 
-        if (xmin > imageWidth - 1 || xmax < 0 || ymin > imageHeight - 1 || ymax < 0)
-            continue;
+            st0 *= v0Raster.z(), st1 *= v1Raster.z(), st2 *= v2Raster.z();
 
-        auto x0 = std::max(0, static_cast<int32_t>(std::floor(xmin)));
-        auto x1 = std::min(imageWidth - 1, static_cast<int32_t>(std::floor(xmax)));
-        auto y0 = std::max(0, static_cast<int32_t>(std::floor(ymin)));
-        auto y1 = std::min(imageHeight - 1, static_cast<int32_t>(std::floor(ymax)));
+            auto xmin = min3(v0Raster.x(), v1Raster.x(), v2Raster.x());
+            auto ymin = min3(v0Raster.y(), v1Raster.y(), v2Raster.y());
+            auto xmax = max3(v0Raster.x(), v1Raster.x(), v2Raster.x());
+            auto ymax = max3(v0Raster.y(), v1Raster.y(), v2Raster.y());
 
-        auto area = edgeFunction(v0, v1, v2);
+            if (xmin > imageWidth - 1 || xmax < 0 || ymin > imageHeight - 1 || ymax < 0)
+                continue;
 
-        for (uint32_t y = y0; y <= y1; ++y) {
-            for (uint32_t x = x0; x <= x1; ++x) {
-                Eigen::Vector4f pixelSample = {x + 0.5f, y + 0.5f, 0.f, 1.f};
-                auto w0 = edgeFunction(v1Raster, v2Raster, pixelSample);
-                auto w1 = edgeFunction(v2Raster, v0Raster, pixelSample);
-                auto w2 = edgeFunction(v0Raster, v1Raster, pixelSample);
-                if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                    w0 /= area;
-                    w1 /= area;
-                    w2 /= area;
-                    auto oneOverZ = v0Raster.z() * w0 + v1Raster.z() * w1 + v2Raster.z() * w2;
-                    auto z = 1 / oneOverZ;
+            auto x0 = std::max(0, static_cast<int32_t>(std::floor(xmin)));
+            auto x1 = std::min(imageWidth - 1, static_cast<int32_t>(std::floor(xmax)));
+            auto y0 = std::max(0, static_cast<int32_t>(std::floor(ymin)));
+            auto y1 = std::min(imageHeight - 1, static_cast<int32_t>(std::floor(ymax)));
 
-                    if (z < depthbuffer[y * imageWidth + x]) {
-                        depthbuffer[y * imageWidth + x] = z;
+            auto area = edgeFunction(v0, v1, v2);
 
-                        Eigen::Vector2f st = st0 * w0 + st1 * w1 + st2 * w2;
+            for (uint32_t y = y0; y <= y1; ++y) {
+                for (uint32_t x = x0; x <= x1; ++x) {
+                    Eigen::Vector4f pixelSample = {x + 0.5f, y + 0.5f, 0.f, 1.f};
+                    auto w0 = edgeFunction(v1Raster, v2Raster, pixelSample);
+                    auto w1 = edgeFunction(v2Raster, v0Raster, pixelSample);
+                    auto w2 = edgeFunction(v0Raster, v1Raster, pixelSample);
+                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                        w0 /= area;
+                        w1 /= area;
+                        w2 /= area;
+                        auto oneOverZ = v0Raster.z() * w0 + v1Raster.z() * w1 + v2Raster.z() * w2;
+                        auto z = 1 / oneOverZ;
 
-                        st *= z;
+                        if (z < depthbuffer[y * imageWidth + x]) {
+                            depthbuffer[y * imageWidth + x] = z;
 
-                        Eigen::Vector4f v0Cam = worldToCamera * v0;
-                        Eigen::Vector4f v1Cam = worldToCamera * v1;
-                        Eigen::Vector4f v2Cam = worldToCamera * v2;
+                            Eigen::Vector2f st = st0 * w0 + st1 * w1 + st2 * w2;
 
-                        auto px = (v0Cam.x() / -v0Cam.z()) * w0 + (v1Cam.x() / -v1Cam.z()) * w1 + (v2Cam.x() / -v2Cam.z()) * w2;
-                        auto py = (v0Cam.y() / -v0Cam.z()) * w0 + (v1Cam.y() / -v1Cam.z()) * w1 + (v2Cam.y() / -v2Cam.z()) * w2;
-                        Eigen::Vector4f pt{px * z, py * z, -z, 0.f};
+                            st *= z;
 
-                        Eigen::Vector4f a = (v1Cam - v0Cam);
-                        Eigen::Vector4f b = (v2Cam - v0Cam);
-                        Eigen::Vector4f n = a.cross3(b);
-                        n.normalize();
-                        Eigen::Vector4f viewDirection = -pt;
-                        viewDirection.normalize();
+                            Eigen::Vector4f v0Cam = worldToCamera * v0;
+                            Eigen::Vector4f v1Cam = worldToCamera * v1;
+                            Eigen::Vector4f v2Cam = worldToCamera * v2;
 
-                        auto nDotView = std::max(0.f, n.dot(viewDirection));
+                            auto px = (v0Cam.x() / -v0Cam.z()) * w0 + (v1Cam.x() / -v1Cam.z()) * w1 + (v2Cam.x() / -v2Cam.z()) * w2;
+                            auto py = (v0Cam.y() / -v0Cam.z()) * w0 + (v1Cam.y() / -v1Cam.z()) * w1 + (v2Cam.y() / -v2Cam.z()) * w2;
+                            Eigen::Vector4f pt{px * z, py * z, -z, 0.f};
 
-                        const auto M = 10;
-                        auto checker = (fmod(st.x() * M, 1.f) > 0.5f) ^ (fmod(st.y() * M, 1.f) < 0.5f);
-                        auto c = 0.3f * (1.f - checker) + 0.7f * checker;
-                        nDotView *= c;
-                        framebuffer[y * imageWidth + x][0] = nDotView * 255;
-                        framebuffer[y * imageWidth + x][1] = nDotView * 255;
-                        framebuffer[y * imageWidth + x][2] = nDotView * 255;
+                            Eigen::Vector4f a = (v1Cam - v0Cam);
+                            Eigen::Vector4f b = (v2Cam - v0Cam);
+                            Eigen::Vector4f n = a.cross3(b);
+                            n.normalize();
+                            Eigen::Vector4f viewDirection = -pt;
+                            viewDirection.normalize();
+
+                            auto nDotView = std::max(0.f, n.dot(viewDirection));
+
+                            const auto M = 10;
+                            auto checker = (fmod(st.x() * M, 1.f) > 0.5f) ^ (fmod(st.y() * M, 1.f) < 0.5f);
+                            auto c = 0.3f * (1.f - checker) + 0.7f * checker;
+                            nDotView *= c;
+                            framebuffer[y * imageWidth + x][0] = nDotView * 255;
+                            framebuffer[y * imageWidth + x][1] = nDotView * 255;
+                            framebuffer[y * imageWidth + x][2] = nDotView * 255;
+                        }
                     }
                 }
             }
