@@ -36,4 +36,9 @@ build/
 *.exe
 *.out
 *.app
+
+# Ctags
 tags
+
+# Exclusion
+!box.obj
