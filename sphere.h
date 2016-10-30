@@ -8,6 +8,8 @@
 #include "hitable.h"
 #include "material.h"
 
+#include <memory>
+
 class sphere : public hitable {
 public:
     sphere() {}
