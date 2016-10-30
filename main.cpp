@@ -8,8 +8,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-#include "cow.h"
-
 static constexpr auto PI = 3.14f;
 static constexpr auto inchToMillimeters = 25.4f;
 enum class FitResolutionGate { kFill = 0, kOverscan };
